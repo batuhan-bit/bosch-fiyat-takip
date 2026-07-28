@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import re
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+
+from bs4 import BeautifulSoup
 
 from .http_client import PoliteHttpClient
 from .models import ProductPrice
@@ -42,6 +44,56 @@ def parse_category_products(html: str) -> list[dict[str, object]]:
                 products.append(item)
         return products
     return []
+
+
+def parse_sellable_category_products(html: str, category: str, base_url: str) -> list[ProductPrice]:
+    listed = parse_category_products(html)
+    prices_by_url: dict[str, float] = {}
+    for item in listed:
+        url = urljoin(base_url, str(item.get("url", "")))
+        price = as_float(first_offer(item.get("offers")).get("price"))
+        if url and price is not None:
+            prices_by_url[url] = price
+
+    soup = BeautifulSoup(html, "html.parser")
+    products: list[ProductPrice] = []
+    for card in soup.select('article[data-test="mms-product-card"]'):
+        link = card.select_one('a[data-test="mms-router-link-product-list-item-link"]')
+        title = card.select_one('[data-test="product-title"]')
+        if not link or not title:
+            continue
+        name = title.get_text(" ", strip=True)
+        if not name.upper().startswith("BOSCH"):
+            continue
+        model = extract_model(name)
+        if not model:
+            continue
+
+        # Pazaryeri ürünleri kart üzerinde sağlayıcı bağlantısıyla işaretlenir.
+        if card.select_one('[data-test="mms-third-party-provider-link"]'):
+            continue
+        basket_buttons = card.select('[data-test*="cofr-add-to-basket-button"]')
+        if not any(
+            button.get("aria-disabled", "false").casefold() != "true" and not button.has_attr("disabled")
+            for button in basket_buttons
+        ):
+            continue
+
+        product_url = urljoin(base_url, str(link.get("href", "")))
+        price = prices_by_url.get(product_url)
+        if price is None:
+            continue
+        products.append(
+            ProductPrice(
+                model=model,
+                category=category,
+                mediamarkt_price=price,
+                mediamarkt_url=product_url,
+                mediamarkt_stock="Stokta",
+                mediamarkt_seller="MediaMarkt",
+            )
+        )
+    return products
 
 
 def parse_product_page(html: str, fallback_url: str, category: str) -> ProductPrice | None:
@@ -116,13 +168,30 @@ class MediaMarktSource:
     def fetch_all(self) -> list[ProductPrice]:
         products: list[ProductPrice] = []
         max_products = int(os.getenv("MAX_PRODUCTS", "0"))
-        for category, url in self.discover():
-            response = self.client.get(url)
-            response.raise_for_status()
-            product = parse_product_page(response.text, response.url, category)
-            if product:
-                products.append(product)
-                if max_products and len(products) >= max_products:
+        seen_listing_urls: set[str] = set()
+        seen_models: set[str] = set()
+        for category, category_url in MEDIAMARKT_CATEGORIES.items():
+            for page in range(1, self.max_pages + 1):
+                response = self.client.get(_with_page(category_url, page))
+                response.raise_for_status()
+                listed = parse_category_products(response.text)
+                listed_urls = {
+                    urljoin(response.url, str(item.get("url", "")))
+                    for item in listed
+                    if item.get("url")
+                }
+                new_listing_urls = listed_urls - seen_listing_urls
+                if not listed or not new_listing_urls:
                     break
+                seen_listing_urls.update(new_listing_urls)
+
+                for product in parse_sellable_category_products(response.text, category, response.url):
+                    if product.model in seen_models:
+                        continue
+                    seen_models.add(product.model)
+                    products.append(product)
+                    if max_products and len(products) >= max_products:
+                        products.sort(key=lambda item: (item.category, item.model))
+                        return products
         products.sort(key=lambda item: (item.category, item.model))
         return products
