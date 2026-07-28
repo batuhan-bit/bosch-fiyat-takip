@@ -20,6 +20,7 @@ HISTORY_SHEET = "Fiyat Geçmişi"
 WHOLESALE_SHEET = "Toptan Fiyat Listesi"
 SUPPORT_SHEET = "Bosch Destekleri"
 STOCK_SHEET = "Eldem Stok Raporu"
+MANUAL_ARCHIVE_SHEET = "Son Alış Arşivi"
 ERROR_SHEET = "Ayarlar ve Hatalar"
 ISTANBUL = ZoneInfo("Europe/Istanbul")
 
@@ -102,7 +103,43 @@ class GoogleSheetsClient:
             manual_last = row[6] if len(row) > 6 else ""
             manual_last_date = row[7] if len(row) > 7 else ""
             latest[model] = (manual_last, manual_last_date)
+        for row in self._get(f"'{MANUAL_ARCHIVE_SHEET}'!A2:C"):
+            if not row:
+                continue
+            model = normalize_model(str(row[0]))
+            manual_last = row[1] if len(row) > 1 else ""
+            manual_last_date = row[2] if len(row) > 2 else ""
+            latest[model] = (manual_last, manual_last_date)
         return latest
+
+    def _update_manual_archive(
+        self,
+        old_rows: list[list[Any]],
+        historical_manual: dict[str, tuple[Any, Any]],
+        now: str,
+    ) -> None:
+        archive = dict(historical_manual)
+        for row in old_rows:
+            if not row:
+                continue
+            model = normalize_model(str(row[0]))
+            manual_last = row[6] if len(row) > 6 else ""
+            manual_last_date = row[7] if len(row) > 7 else ""
+            if manual_last != "" or manual_last_date != "":
+                archive[model] = (manual_last, manual_last_date)
+
+        rows = [[model, values[0], values[1], now] for model, values in sorted(archive.items())]
+        self.values.clear(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"'{MANUAL_ARCHIVE_SHEET}'!A2:D",
+        ).execute()
+        if rows:
+            self.values.update(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{MANUAL_ARCHIVE_SHEET}'!A2:D{len(rows)+1}",
+                valueInputOption="USER_ENTERED",
+                body={"values": rows},
+            ).execute()
 
     def write_current_and_history(
         self,
@@ -115,6 +152,7 @@ class GoogleSheetsClient:
         old_by_model = {normalize_model(str(row[0])): row for row in old_rows if row}
         historical_manual = self._latest_manual_values()
         now = datetime.now(ISTANBUL).strftime("%Y-%m-%d %H:%M:%S")
+        self._update_manual_archive(old_rows, historical_manual, now)
         rows: list[list[Any]] = []
         history_rows: list[list[Any]] = []
         changed: list[dict[str, Any]] = []

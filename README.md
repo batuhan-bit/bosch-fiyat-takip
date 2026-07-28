@@ -25,6 +25,8 @@ Güncel Fiyatlar ve Fiyat Geçmişi sayfalarına yalnızca MediaMarkt'ın doğru
 satıcısı olduğu ve o gün satın alınabilir stoğu bulunan ürünler yazılır. Stoktan
 çıkan ürün Güncel Fiyatlar'dan kaldırılır; yeniden stoğa girerse tekrar eklenir.
 Son alış fiyatı ve tarihi, geri dönen ürün için geçmiş kayıttan korunur.
+MediaMarkt stoğundan çıkan bir ürünün elle girilmiş son alış bilgileri gizli
+`Son Alış Arşivi` sayfasında saklanır ve ürün yeniden stoğa girerse geri yüklenir.
 
 ## Google Sheets sayfaları
 
@@ -32,7 +34,9 @@ Son alış fiyatı ve tarihi, geri dönen ürün için geçmiş kayıttan korunu
 2. Fiyat Geçmişi
 3. Toptan Fiyat Listesi
 4. Bosch Destekleri
-5. Ayarlar ve Hatalar
+5. Eldem Stok Raporu
+6. Son Alış Arşivi (gizli, otomatik yönetilir)
+7. Ayarlar ve Hatalar
 
 Ana tabloda şu alanlar bulunacaktır:
 

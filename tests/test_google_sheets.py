@@ -11,9 +11,10 @@ class _Request:
 
 
 class _Values:
-    def __init__(self, current_rows, history_rows=None):
+    def __init__(self, current_rows, history_rows=None, archive_rows=None):
         self.current_rows = current_rows
         self.history_rows = history_rows or []
+        self.archive_rows = archive_rows or []
         self.updates = []
         self.appends = []
         self.clears = []
@@ -23,6 +24,8 @@ class _Values:
             return _Request({"values": self.current_rows})
         if kwargs["range"] == "'Fiyat Geçmişi'!B2:I":
             return _Request({"values": self.history_rows})
+        if kwargs["range"] == "'Son Alış Arşivi'!A2:C":
+            return _Request({"values": self.archive_rows})
         raise AssertionError(kwargs["range"])
 
     def clear(self, **kwargs):
@@ -78,7 +81,8 @@ def test_manual_last_purchase_price_and_date_are_preserved():
 
     client.write_current_and_history([product], wholesale, support, {"WGG244Z0TR": 6})
 
-    current_row = values.updates[0]["body"]["values"][0]
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P2")
+    current_row = current_update["body"]["values"][0]
     history_row = values.appends[0]["body"]["values"][0]
     assert len(current_row) == 16
     assert current_row[4:9] == [6, 25_000, 24_000, "15.07.2026", 1_000]
@@ -90,8 +94,10 @@ def test_manual_last_purchase_price_and_date_are_preserved():
     assert history_row[5:10] == [6, 25_000, 24_000, "15.07.2026", 1_000]
     assert history_row[11] == (29_500 - 24_000) / 24_000
     assert history_row[13] == (29_500 - 23_000) / 23_000
-    assert values.clears[0]["range"] == "'Güncel Fiyatlar'!A2:P"
-    assert values.updates[0]["range"] == "'Güncel Fiyatlar'!A2:P2"
+    assert {item["range"] for item in values.clears} == {
+        "'Son Alış Arşivi'!A2:D",
+        "'Güncel Fiyatlar'!A2:P",
+    }
     assert values.appends[0]["range"] == "'Fiyat Geçmişi'!A:P"
 
 
@@ -117,11 +123,36 @@ def test_returning_product_recovers_manual_values_from_history():
 
     client.write_current_and_history([product], {}, {}, {})
 
-    current_row = values.updates[0]["body"]["values"][0]
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P2")
+    current_row = current_update["body"]["values"][0]
     assert current_row[6:8] == [24_000, "15.07.2026"]
     assert current_row[5] == "Üretimden Kalktı"
     assert "Üretimden Kalktı" in current_row[9]
     assert current_row[10] == '=IF(OR(NOT(ISNUMBER(J2));J2=0);"";(C2-J2)/J2)'
+
+
+def test_returning_product_recovers_manual_values_from_archive():
+    values = _Values([], archive_rows=[["WGG244Z0TR", 24_000, "15.07.2026"]])
+    client = GoogleSheetsClient.__new__(GoogleSheetsClient)
+    client.spreadsheet_id = "sheet-id"
+    client.values = values
+    product = ProductPrice(
+        model="WGG244Z0TR",
+        category="Çamaşır Makinesi",
+        mediamarkt_price=29_500,
+        mediamarkt_url="https://www.mediamarkt.com.tr/example",
+        mediamarkt_stock="Stokta",
+        mediamarkt_seller="MediaMarkt",
+        bosch_price=32_000,
+        bosch_url="https://www.bosch-home.com.tr/example",
+        bosch_status="Bosch'ta bulundu",
+    )
+
+    client.write_current_and_history([product], {}, {}, {})
+
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P2")
+    current_row = current_update["body"]["values"][0]
+    assert current_row[6:8] == [24_000, "15.07.2026"]
 
 
 def test_product_that_leaves_stock_is_removed_from_current_sheet():
@@ -151,6 +182,11 @@ def test_product_that_leaves_stock_is_removed_from_current_sheet():
     summary = client.write_current_and_history([], {}, {}, {})
 
     assert summary["removed_models"] == ["WGG244Z0TR"]
-    assert values.updates == []
+    archive_update = next(item for item in values.updates if item["range"] == "'Son Alış Arşivi'!A2:D2")
+    assert archive_update["body"]["values"][0][:3] == ["WGG244Z0TR", 24_000, "15.07.2026"]
+    assert not any(item["range"].startswith("'Güncel Fiyatlar'") for item in values.updates)
     assert values.appends == []
-    assert values.clears[0]["range"] == "'Güncel Fiyatlar'!A2:P"
+    assert {item["range"] for item in values.clears} == {
+        "'Son Alış Arşivi'!A2:D",
+        "'Güncel Fiyatlar'!A2:P",
+    }
