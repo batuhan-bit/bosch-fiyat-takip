@@ -12,7 +12,9 @@ concurrency:
 
 jobs:
   check-prices:
-    runs-on: ubuntu-latest
+    # MediaMarkt, GitHub'ın standart Linux çıkış IP'lerini 403 ile engelliyor.
+    # macOS havuzu farklı bir ağdan çıkar; bot yine yalnızca resmi siteleri okur.
+    runs-on: macos-latest
     timeout-minutes: 30
     steps:
       - name: Projeyi indir
