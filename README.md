@@ -37,6 +37,7 @@ Ana tabloda şu alanlar bulunacaktır:
 - Bosch Satış Fiyatı
 - Toptan Fiyatımız
 - Son Alış Fiyatımız
+- Son Alış Tarihi
 - Bosch Fiyat Farkı Desteği
 - Net Toptan Fiyat
 - Net Son Alış Fiyatı
@@ -62,6 +63,7 @@ stoklarında hâlâ bulunabileceğini gösterir.
 - `Net Toptan Fiyat`: **YOK**
 - `Ürün Durumu`: **Toptan listede yok**
 - `Son Alış Fiyatımız`: Kullanıcı tarafından elle girilmeye devam eder.
+- `Son Alış Tarihi`: Kullanıcı tarafından elle girilir ve günlük güncellemede korunur.
 - `Net Son Alış Fiyatı`: Son alış fiyatı ve geçerli Bosch desteği varsa hesaplanır.
 
 Toptan listede bulunmamak, modelin Bosch fiyat farkı dosyasındaki phase-out
@@ -98,7 +100,8 @@ Slack webhook adresi GitHub Secrets içinde saklanacak. Günlük kontrol sonunda
 - Dört MediaMarkt Bosch kategorisi yapılandırılmış ürün verilerinden taranır.
 - Ürün sayfasında marka `BOSCH` ve satıcı `MediaMarkt` olarak doğrulanır.
 - Model, Bosch Türkiye resmi sitesinde tam kodla aranır.
-- Google Sheets'teki Son Alış Fiyatımız sütunu günlük güncellemede korunur.
+- Google Sheets'teki Son Alış Fiyatımız ve Son Alış Tarihi sütunları günlük
+  güncellemede korunur.
 - GitHub Actions her gün Türkiye saatiyle 09:00'da çalışır.
 
 ## Kurulum özeti

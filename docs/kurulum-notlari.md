@@ -6,7 +6,8 @@
 2. Yalnızca satıcısı MediaMarkt olan ürünleri kabul et.
 3. Tam model kodunu çıkar ve Bosch Türkiye resmi sitesinde eşleştir.
 4. Güncel fiyatları Google Sheets'e yaz.
-5. Son alış fiyatı hücresine dokunma; bu alan kullanıcı tarafından girilir.
+5. Son alış fiyatı ve son alış tarihi hücrelerine dokunma; bu alanlar kullanıcı
+   tarafından girilir.
 6. Model güncel toptan listede yoksa Toptan Fiyatımız ve Net Toptan Fiyat
    alanlarına `YOK` yaz; ürünü silme ve kendiliğinden phase-out kabul etme.
 7. Son alış fiyatı girilmişse, toptan fiyat bulunmasa bile geçerli Bosch

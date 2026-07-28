@@ -29,6 +29,7 @@ CURRENT_HEADERS = [
     "Bosch Satış Fiyatı",
     "Toptan Fiyatımız",
     "Son Alış Fiyatımız",
+    "Son Alış Tarihi",
     "Bosch Fiyat Farkı Desteği (KDV Hariç)",
     "Net Toptan Fiyat",
     "Net Son Alış Fiyatı",
@@ -84,7 +85,7 @@ class GoogleSheetsClient:
         return wholesale, support
 
     def _current_rows(self) -> list[list[Any]]:
-        return self._get(f"'{CURRENT_SHEET}'!A2:P")
+        return self._get(f"'{CURRENT_SHEET}'!A2:Q")
 
     def write_current_and_history(
         self,
@@ -106,6 +107,7 @@ class GoogleSheetsClient:
             seen.add(model)
             old = old_by_model.get(model, [])
             manual_last = old[5] if len(old) > 5 else ""
+            manual_last_date = old[6] if len(old) > 6 else ""
             wholesale_value = wholesale.get(model)
             support_value = support.get(model)
             wholesale_cell: Any = wholesale_value.amount if wholesale_value else "YOK"
@@ -119,8 +121,8 @@ class GoogleSheetsClient:
             wholesale_status = "Listede" if wholesale_value else "Toptan listede yok"
             support_source = support_value.source_type if support_value else "YOK"
             row_number = len(rows) + 2
-            net_wholesale = f'=IF(E{row_number}="YOK";"YOK";E{row_number}-IF(ISNUMBER(G{row_number});G{row_number};0))'
-            net_last = f'=IF(F{row_number}="";"";F{row_number}-IF(ISNUMBER(G{row_number});G{row_number};0))'
+            net_wholesale = f'=IF(E{row_number}="YOK";"YOK";E{row_number}-IF(ISNUMBER(H{row_number});H{row_number};0))'
+            net_last = f'=IF(F{row_number}="";"";F{row_number}-IF(ISNUMBER(H{row_number});H{row_number};0))'
             row = [
                 model,
                 product.category,
@@ -128,6 +130,7 @@ class GoogleSheetsClient:
                 bosch_price,
                 wholesale_cell,
                 manual_last,
+                manual_last_date,
                 support_cell,
                 net_wholesale,
                 net_last,
@@ -149,6 +152,7 @@ class GoogleSheetsClient:
                     bosch_price,
                     wholesale_cell,
                     manual_last,
+                    manual_last_date,
                     support_cell,
                     net_wholesale_value,
                     net_last_value,
@@ -171,24 +175,24 @@ class GoogleSheetsClient:
         removed_models = sorted(set(old_by_model) - seen)
         for model in removed_models:
             old = list(old_by_model[model])
-            old += [""] * (16 - len(old))
-            old[9] = "MediaMarkt'ta artık bulunamadı"
-            old[13] = now
-            rows.append(old[:16])
-            history_rows.append([now, *old[:13], old[14], old[15]])
+            old += [""] * (17 - len(old))
+            old[10] = "MediaMarkt'ta artık bulunamadı"
+            old[14] = now
+            rows.append(old[:17])
+            history_rows.append([now, *old[:14], old[15], old[16]])
 
-        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:P").execute()
+        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:Q").execute()
         if rows:
             self.values.update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{CURRENT_SHEET}'!A2:P{len(rows)+1}",
+                range=f"'{CURRENT_SHEET}'!A2:Q{len(rows)+1}",
                 valueInputOption="USER_ENTERED",
                 body={"values": rows},
             ).execute()
         if history_rows:
             self.values.append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{HISTORY_SHEET}'!A:P",
+                range=f"'{HISTORY_SHEET}'!A:Q",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
                 body={"values": history_rows},
