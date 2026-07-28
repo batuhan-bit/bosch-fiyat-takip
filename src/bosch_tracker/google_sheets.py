@@ -159,7 +159,16 @@ class GoogleSheetsClient:
         new_models: list[str] = []
         seen: set[str] = set()
 
-        for product in products:
+        sorted_products = sorted(
+            products,
+            key=lambda product: (
+                -stock.get(product.model, 0),
+                product.category,
+                product.model,
+            ),
+        )
+
+        for product in sorted_products:
             model = product.model
             seen.add(model)
             old = old_by_model.get(model, [])
@@ -267,7 +276,7 @@ class GoogleSheetsClient:
                 body={"values": history_rows},
             ).execute()
         return {
-            "checked": len(products),
+            "checked": len(sorted_products),
             "changed": changed,
             "new_models": new_models,
             "removed_models": removed_models,

@@ -98,6 +98,45 @@ def test_manual_last_purchase_price_and_date_are_preserved():
         "'Son Alış Arşivi'!A2:D",
         "'Güncel Fiyatlar'!A2:P",
     }
+
+
+def test_current_products_are_sorted_by_stock_descending():
+    values = _Values([])
+    client = GoogleSheetsClient.__new__(GoogleSheetsClient)
+    client.spreadsheet_id = "sheet-id"
+    client.values = values
+
+    def product(model: str, category: str) -> ProductPrice:
+        return ProductPrice(
+            model=model,
+            category=category,
+            mediamarkt_price=30_000,
+            mediamarkt_url=f"https://www.mediamarkt.com.tr/{model}",
+            mediamarkt_stock="Stokta",
+            mediamarkt_seller="MediaMarkt",
+            bosch_price=32_000,
+            bosch_url=f"https://www.bosch-home.com.tr/{model}",
+            bosch_status="Bosch'ta bulundu",
+        )
+
+    products = [
+        product("LOW", "Buzdolabı"),
+        product("HIGH-B", "Çamaşır Makinesi"),
+        product("HIGH-A", "Bulaşık Makinesi"),
+        product("MISSING", "Kurutma Makinesi"),
+    ]
+
+    client.write_current_and_history(
+        products,
+        {},
+        {},
+        {"LOW": 2, "HIGH-B": 10, "HIGH-A": 10},
+    )
+
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P5")
+    current_rows = current_update["body"]["values"]
+    assert [row[0] for row in current_rows] == ["HIGH-A", "HIGH-B", "LOW", "MISSING"]
+    assert [row[4] for row in current_rows] == [10, 10, 2, 0]
     assert values.appends[0]["range"] == "'Fiyat Geçmişi'!A:P"
 
 

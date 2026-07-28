@@ -57,6 +57,9 @@ Ana tabloda şu alanlar bulunacaktır:
 - MediaMarkt Linki
 - Bosch Linki
 
+Ürünler `Eldem Stok` miktarı en yüksekten en düşüğe doğru sıralanır. Stokların
+eşit olması durumunda kategori ve model adı kullanılır.
+
 Hesaplamalar:
 
 - Net Toptan Fiyat = Toptan Fiyatımız - Bosch Fiyat Farkı Desteği
