@@ -26,8 +26,8 @@ def run(dry_run: bool, output_json: Path | None) -> None:
 
     sheets = GoogleSheetsClient()
     try:
-        wholesale, support = sheets.read_reference_data()
-        summary = sheets.write_current_and_history(products, wholesale, support)
+        wholesale, support, stock = sheets.read_reference_data()
+        summary = sheets.write_current_and_history(products, wholesale, support, stock)
         send_daily_summary(summary)
     except Exception as exc:
         try:

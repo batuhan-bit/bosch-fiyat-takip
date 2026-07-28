@@ -19,6 +19,7 @@ CURRENT_SHEET = "Güncel Fiyatlar"
 HISTORY_SHEET = "Fiyat Geçmişi"
 WHOLESALE_SHEET = "Toptan Fiyat Listesi"
 SUPPORT_SHEET = "Bosch Destekleri"
+STOCK_SHEET = "Eldem Stok Raporu"
 ERROR_SHEET = "Ayarlar ve Hatalar"
 ISTANBUL = ZoneInfo("Europe/Istanbul")
 
@@ -27,14 +28,15 @@ CURRENT_HEADERS = [
     "Kategori",
     "MediaMarkt Fiyatı",
     "Bosch Satış Fiyatı",
+    "Eldem Stok",
     "Toptan Fiyatımız",
     "Son Alış Fiyatımız",
     "Son Alış Tarihi",
     "Bosch Fiyat Farkı Desteği (KDV Hariç)",
     "Net Toptan Fiyat",
+    "Net Toptana Göre Karlılık",
     "Net Son Alış Fiyatı",
-    "Toptan Liste Durumu",
-    "Destek Kaynağı",
+    "Net Son Alışa Göre Karlılık",
     "Son Kontrol Tarihi",
     "MediaMarkt Linki",
     "Bosch Linki",
@@ -64,7 +66,9 @@ class GoogleSheetsClient:
         ).execute()
         return response.get("values", [])
 
-    def read_reference_data(self) -> tuple[dict[str, ReferenceValue], dict[str, ReferenceValue]]:
+    def read_reference_data(
+        self,
+    ) -> tuple[dict[str, ReferenceValue], dict[str, ReferenceValue], dict[str, float]]:
         wholesale: dict[str, ReferenceValue] = {}
         for row in self._get(f"'{WHOLESALE_SHEET}'!A2:D"):
             if len(row) >= 2 and isinstance(row[1], (int, float)):
@@ -80,19 +84,23 @@ class GoogleSheetsClient:
                 support[model] = ReferenceValue(
                     model, float(row[1]), str(row[2]), str(row[3]) if len(row) > 3 else "", str(row[4]) if len(row) > 4 else ""
                 )
-        return wholesale, support
+        stock: dict[str, float] = {}
+        for row in self._get(f"'{STOCK_SHEET}'!A2:B"):
+            if len(row) >= 2 and isinstance(row[1], (int, float)):
+                stock[normalize_model(str(row[0]))] = float(row[1])
+        return wholesale, support, stock
 
     def _current_rows(self) -> list[list[Any]]:
-        return self._get(f"'{CURRENT_SHEET}'!A2:O")
+        return self._get(f"'{CURRENT_SHEET}'!A2:P")
 
     def _latest_manual_values(self) -> dict[str, tuple[Any, Any]]:
         latest: dict[str, tuple[Any, Any]] = {}
-        for row in self._get(f"'{HISTORY_SHEET}'!B2:H"):
+        for row in self._get(f"'{HISTORY_SHEET}'!B2:I"):
             if not row:
                 continue
             model = normalize_model(str(row[0]))
-            manual_last = row[5] if len(row) > 5 else ""
-            manual_last_date = row[6] if len(row) > 6 else ""
+            manual_last = row[6] if len(row) > 6 else ""
+            manual_last_date = row[7] if len(row) > 7 else ""
             latest[model] = (manual_last, manual_last_date)
         return latest
 
@@ -101,6 +109,7 @@ class GoogleSheetsClient:
         products: list[ProductPrice],
         wholesale: dict[str, ReferenceValue],
         support: dict[str, ReferenceValue],
+        stock: dict[str, float],
     ) -> dict[str, Any]:
         old_rows = self._current_rows()
         old_by_model = {normalize_model(str(row[0])): row for row in old_rows if row}
@@ -117,36 +126,57 @@ class GoogleSheetsClient:
             seen.add(model)
             old = old_by_model.get(model, [])
             historical_last, historical_last_date = historical_manual.get(model, ("", ""))
-            manual_last = old[5] if old and len(old) > 5 else historical_last
-            manual_last_date = old[6] if old and len(old) > 6 else historical_last_date
+            manual_last = old[6] if old and len(old) > 6 else historical_last
+            manual_last_date = old[7] if old and len(old) > 7 else historical_last_date
             wholesale_value = wholesale.get(model)
             support_value = support.get(model)
-            wholesale_cell: Any = wholesale_value.amount if wholesale_value else "YOK"
+            stock_cell: Any = stock.get(model, 0 if stock else "")
+            wholesale_cell: Any = wholesale_value.amount if wholesale_value else "Üretimden Kalktı"
             support_cell: Any = support_value.amount if support_value else "YOK"
             bosch_price: Any = product.bosch_price if product.bosch_price is not None else "YOK"
             mediamarkt_price: Any = product.mediamarkt_price if product.mediamarkt_price is not None else "YOK"
             support_amount = support_value.amount if support_value else 0.0
-            net_wholesale_value: Any = wholesale_value.amount - support_amount if wholesale_value else "YOK"
+            net_wholesale_value: Any = wholesale_value.amount - support_amount if wholesale_value else "Üretimden Kalktı"
             manual_last_number = as_float(manual_last)
             net_last_value: Any = manual_last_number - support_amount if manual_last_number is not None else ""
-            wholesale_status = "Listede" if wholesale_value else "Toptan listede yok"
-            support_source = support_value.source_type if support_value else "YOK"
+            net_wholesale_profitability: Any = ""
+            if (
+                product.mediamarkt_price is not None
+                and isinstance(net_wholesale_value, (int, float))
+                and net_wholesale_value != 0
+            ):
+                net_wholesale_profitability = (product.mediamarkt_price - net_wholesale_value) / net_wholesale_value
+            net_last_profitability: Any = ""
+            if product.mediamarkt_price is not None and isinstance(net_last_value, (int, float)) and net_last_value != 0:
+                net_last_profitability = (product.mediamarkt_price - net_last_value) / net_last_value
             row_number = len(rows) + 2
-            net_wholesale = f'=IF(E{row_number}="YOK";"YOK";E{row_number}-IF(ISNUMBER(H{row_number});H{row_number};0))'
-            net_last = f'=IF(F{row_number}="";"";F{row_number}-IF(ISNUMBER(H{row_number});H{row_number};0))'
+            net_wholesale = (
+                f'=IF(F{row_number}="Üretimden Kalktı";"Üretimden Kalktı";'
+                f'F{row_number}-IF(ISNUMBER(I{row_number});I{row_number};0))'
+            )
+            net_wholesale_profit = (
+                f'=IF(OR(NOT(ISNUMBER(J{row_number}));J{row_number}=0);"";'
+                f'(C{row_number}-J{row_number})/J{row_number})'
+            )
+            net_last = f'=IF(G{row_number}="";"";G{row_number}-IF(ISNUMBER(I{row_number});I{row_number};0))'
+            net_last_profit = (
+                f'=IF(OR(NOT(ISNUMBER(L{row_number}));L{row_number}=0);"";'
+                f'(C{row_number}-L{row_number})/L{row_number})'
+            )
             row = [
                 model,
                 product.category,
                 mediamarkt_price,
                 bosch_price,
+                stock_cell,
                 wholesale_cell,
                 manual_last,
                 manual_last_date,
                 support_cell,
                 net_wholesale,
+                net_wholesale_profit,
                 net_last,
-                wholesale_status,
-                support_source,
+                net_last_profit,
                 now,
                 product.mediamarkt_url,
                 product.bosch_url,
@@ -159,14 +189,15 @@ class GoogleSheetsClient:
                     product.category,
                     mediamarkt_price,
                     bosch_price,
+                    stock_cell,
                     wholesale_cell,
                     manual_last,
                     manual_last_date,
                     support_cell,
                     net_wholesale_value,
+                    net_wholesale_profitability,
                     net_last_value,
-                    wholesale_status,
-                    support_source,
+                    net_last_profitability,
                     product.mediamarkt_url,
                     product.bosch_url,
                 ]
@@ -181,18 +212,18 @@ class GoogleSheetsClient:
 
         removed_models = sorted(set(old_by_model) - seen)
 
-        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:O").execute()
+        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:P").execute()
         if rows:
             self.values.update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{CURRENT_SHEET}'!A2:O{len(rows)+1}",
+                range=f"'{CURRENT_SHEET}'!A2:P{len(rows)+1}",
                 valueInputOption="USER_ENTERED",
                 body={"values": rows},
             ).execute()
         if history_rows:
             self.values.append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{HISTORY_SHEET}'!A:O",
+                range=f"'{HISTORY_SHEET}'!A:P",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
                 body={"values": history_rows},

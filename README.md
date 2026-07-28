@@ -40,13 +40,15 @@ Ana tabloda şu alanlar bulunacaktır:
 - Kategori
 - MediaMarkt Fiyatı
 - Bosch Satış Fiyatı
+- Eldem Stok
 - Toptan Fiyatımız
 - Son Alış Fiyatımız
 - Son Alış Tarihi
 - Bosch Fiyat Farkı Desteği
 - Net Toptan Fiyat
+- Net Toptana Göre Karlılık
 - Net Son Alış Fiyatı
-- Ürün Durumu
+- Net Son Alışa Göre Karlılık
 - Son Kontrol Tarihi
 - MediaMarkt Linki
 - Bosch Linki
@@ -54,7 +56,9 @@ Ana tabloda şu alanlar bulunacaktır:
 Hesaplamalar:
 
 - Net Toptan Fiyat = Toptan Fiyatımız - Bosch Fiyat Farkı Desteği
+- Net Toptana Göre Karlılık = (MediaMarkt Fiyatı - Net Toptan Fiyat) / Net Toptan Fiyat
 - Net Son Alış Fiyatı = Son Alış Fiyatımız - Bosch Fiyat Farkı Desteği
+- Net Son Alışa Göre Karlılık = (MediaMarkt Fiyatı - Net Son Alış Fiyatı) / Net Son Alış Fiyatı
 
 ## Toptan listede bulunmayan ürünler
 
@@ -62,9 +66,9 @@ MediaMarkt'ta bulunan bir model güncel Bosch toptan fiyat listesinde yoksa ür�
 takipten çıkarılmaz. Bu durum ürünün üretimden kalkmış olabileceğini, ancak bayi
 stoklarında hâlâ bulunabileceğini gösterir.
 
-- `Toptan Fiyatımız`: **YOK**
-- `Net Toptan Fiyat`: **YOK**
-- `Ürün Durumu`: **Toptan listede yok**
+- `Toptan Fiyatımız`: **Üretimden Kalktı**
+- `Net Toptan Fiyat`: **Üretimden Kalktı**
+- `Net Toptana Göre Karlılık`: Boş bırakılır.
 - `Son Alış Fiyatımız`: Kullanıcı tarafından elle girilmeye devam eder.
 - `Son Alış Tarihi`: Kullanıcı tarafından elle girilir ve günlük güncellemede korunur.
 - `Net Son Alış Fiyatı`: Son alış fiyatı ve geçerli Bosch desteği varsa hesaplanır.
@@ -89,6 +93,7 @@ phase-out sayfasında birebir bulunursa kullanılır.
 
 - Toptan fiyat listesini `girdiler/toptan-fiyat-listeleri/` klasörüne koyun.
 - Bosch fiyat farkı listesini `girdiler/fiyat-farki-listeleri/` klasörüne koyun.
+- Eldem stok raporunu `girdiler/stok-raporlari/` klasörüne koyun.
 
 Bu klasörlerdeki ticari dosyalar güvenlik amacıyla GitHub'a gönderilmez.
 

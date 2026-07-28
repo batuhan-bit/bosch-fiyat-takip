@@ -1,8 +1,10 @@
 # Ticari fiyat listeleri GitHub'a gönderilmemeli
 girdiler/toptan-fiyat-listeleri/*
 girdiler/fiyat-farki-listeleri/*
+girdiler/stok-raporlari/*
 !girdiler/toptan-fiyat-listeleri/README.md
 !girdiler/fiyat-farki-listeleri/README.md
+!girdiler/stok-raporlari/README.md
 
 # Gizli erişim bilgileri
 .env
@@ -25,4 +27,3 @@ tmp/
 Thumbs.db
 .idea/
 .vscode/
-

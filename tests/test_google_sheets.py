@@ -19,9 +19,9 @@ class _Values:
         self.clears = []
 
     def get(self, **kwargs):
-        if kwargs["range"] == "'Güncel Fiyatlar'!A2:O":
+        if kwargs["range"] == "'Güncel Fiyatlar'!A2:P":
             return _Request({"values": self.current_rows})
-        if kwargs["range"] == "'Fiyat Geçmişi'!B2:H":
+        if kwargs["range"] == "'Fiyat Geçmişi'!B2:I":
             return _Request({"values": self.history_rows})
         raise AssertionError(kwargs["range"])
 
@@ -44,14 +44,15 @@ def test_manual_last_purchase_price_and_date_are_preserved():
         "Çamaşır Makinesi",
         30_000,
         32_000,
+        8,
         25_000,
         24_000,
         "15.07.2026",
         1_000,
         24_000,
+        0.25,
         23_000,
-        "Listede",
-        "BSP",
+        0.30,
         "2026-07-27 09:00:00",
         "https://www.mediamarkt.com.tr/example",
         "https://www.bosch-home.com.tr/example",
@@ -75,23 +76,29 @@ def test_manual_last_purchase_price_and_date_are_preserved():
     wholesale = {"WGG244Z0TR": ReferenceValue("WGG244Z0TR", 25_000, "Toptan")}
     support = {"WGG244Z0TR": ReferenceValue("WGG244Z0TR", 1_000, "BSP")}
 
-    client.write_current_and_history([product], wholesale, support)
+    client.write_current_and_history([product], wholesale, support, {"WGG244Z0TR": 6})
 
     current_row = values.updates[0]["body"]["values"][0]
     history_row = values.appends[0]["body"]["values"][0]
-    assert len(current_row) == 15
-    assert current_row[5:8] == [24_000, "15.07.2026", 1_000]
-    assert "ISNUMBER(H2)" in current_row[8]
-    assert "ISNUMBER(H2)" in current_row[9]
-    assert len(history_row) == 15
-    assert history_row[6:9] == [24_000, "15.07.2026", 1_000]
-    assert values.clears[0]["range"] == "'Güncel Fiyatlar'!A2:O"
-    assert values.updates[0]["range"] == "'Güncel Fiyatlar'!A2:O2"
-    assert values.appends[0]["range"] == "'Fiyat Geçmişi'!A:O"
+    assert len(current_row) == 16
+    assert current_row[4:9] == [6, 25_000, 24_000, "15.07.2026", 1_000]
+    assert "ISNUMBER(I2)" in current_row[9]
+    assert "(C2-J2)/J2" in current_row[10]
+    assert "ISNUMBER(I2)" in current_row[11]
+    assert "(C2-L2)/L2" in current_row[12]
+    assert len(history_row) == 16
+    assert history_row[5:10] == [6, 25_000, 24_000, "15.07.2026", 1_000]
+    assert history_row[11] == (29_500 - 24_000) / 24_000
+    assert history_row[13] == (29_500 - 23_000) / 23_000
+    assert values.clears[0]["range"] == "'Güncel Fiyatlar'!A2:P"
+    assert values.updates[0]["range"] == "'Güncel Fiyatlar'!A2:P2"
+    assert values.appends[0]["range"] == "'Fiyat Geçmişi'!A:P"
 
 
 def test_returning_product_recovers_manual_values_from_history():
-    historical_manual = [["WGG244Z0TR", "Çamaşır Makinesi", 30_000, 32_000, 25_000, 24_000, "15.07.2026"]]
+    historical_manual = [
+        ["WGG244Z0TR", "Çamaşır Makinesi", 30_000, 32_000, 8, 25_000, 24_000, "15.07.2026"]
+    ]
     values = _Values([], historical_manual)
     client = GoogleSheetsClient.__new__(GoogleSheetsClient)
     client.spreadsheet_id = "sheet-id"
@@ -108,10 +115,13 @@ def test_returning_product_recovers_manual_values_from_history():
         bosch_status="Bosch'ta bulundu",
     )
 
-    client.write_current_and_history([product], {}, {})
+    client.write_current_and_history([product], {}, {}, {})
 
     current_row = values.updates[0]["body"]["values"][0]
-    assert current_row[5:7] == [24_000, "15.07.2026"]
+    assert current_row[6:8] == [24_000, "15.07.2026"]
+    assert current_row[5] == "Üretimden Kalktı"
+    assert "Üretimden Kalktı" in current_row[9]
+    assert current_row[10] == '=IF(OR(NOT(ISNUMBER(J2));J2=0);"";(C2-J2)/J2)'
 
 
 def test_product_that_leaves_stock_is_removed_from_current_sheet():
@@ -120,14 +130,15 @@ def test_product_that_leaves_stock_is_removed_from_current_sheet():
         "Çamaşır Makinesi",
         30_000,
         32_000,
+        8,
         25_000,
         24_000,
         "15.07.2026",
         1_000,
         24_000,
+        0.25,
         23_000,
-        "Listede",
-        "BSP",
+        0.30,
         "2026-07-27 09:00:00",
         "https://www.mediamarkt.com.tr/example",
         "https://www.bosch-home.com.tr/example",
@@ -137,9 +148,9 @@ def test_product_that_leaves_stock_is_removed_from_current_sheet():
     client.spreadsheet_id = "sheet-id"
     client.values = values
 
-    summary = client.write_current_and_history([], {}, {})
+    summary = client.write_current_and_history([], {}, {}, {})
 
     assert summary["removed_models"] == ["WGG244Z0TR"]
     assert values.updates == []
     assert values.appends == []
-    assert values.clears[0]["range"] == "'Güncel Fiyatlar'!A2:O"
+    assert values.clears[0]["range"] == "'Güncel Fiyatlar'!A2:P"
