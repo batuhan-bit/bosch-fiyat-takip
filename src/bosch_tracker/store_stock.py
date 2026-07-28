@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any
 from urllib.parse import urlencode
@@ -139,25 +138,8 @@ def enrich_store_stock(product: ProductPrice, client: PoliteHttpClient) -> None:
     try:
         response = client.get(build_store_stock_url(product_id))
         response.raise_for_status()
-        payload = response.json()
-        if os.getenv("DEBUG_STORE_STOCK", "").casefold() in {"1", "true", "yes"}:
-            print(json.dumps({"product_id": product_id, "payload": payload}, ensure_ascii=False))
-        stock = parse_store_stock(payload)
-    except Exception as exc:
-        if os.getenv("DEBUG_STORE_STOCK", "").casefold() in {"1", "true", "yes"}:
-            status_code = getattr(locals().get("response"), "status_code", None)
-            response_text = getattr(locals().get("response"), "text", "")
-            print(
-                json.dumps(
-                    {
-                        "product_id": product_id,
-                        "status_code": status_code,
-                        "error": str(exc),
-                        "response": str(response_text)[:1000],
-                    },
-                    ensure_ascii=False,
-                )
-            )
+        stock = parse_store_stock(response.json())
+    except Exception:
         return
     product.mediamarkt_espark_stock = stock["espark"]
     product.mediamarkt_vega_stock = stock["vega"]
