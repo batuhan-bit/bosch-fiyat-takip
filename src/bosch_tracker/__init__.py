@@ -1,0 +1,2 @@
+"""Bosch fiyat takip botu."""
+

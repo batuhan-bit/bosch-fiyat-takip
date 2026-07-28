@@ -1,0 +1,10 @@
+[project]
+name = "bosch-fiyat-takip"
+version = "0.1.0"
+description = "MediaMarkt ve Bosch Türkiye günlük fiyat takip botu"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

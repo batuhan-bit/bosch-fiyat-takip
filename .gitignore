@@ -1,0 +1,28 @@
+# Ticari fiyat listeleri GitHub'a gönderilmemeli
+girdiler/toptan-fiyat-listeleri/*
+girdiler/fiyat-farki-listeleri/*
+!girdiler/toptan-fiyat-listeleri/README.md
+!girdiler/fiyat-farki-listeleri/README.md
+
+# Gizli erişim bilgileri
+.env
+credentials*.json
+service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Bot çıktıları ve geçici dosyalar
+logs/
+tmp/
+*.log
+
+# İşletim sistemi / editör
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
