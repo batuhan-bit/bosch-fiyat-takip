@@ -20,9 +20,9 @@ class _Values:
         self.clears = []
 
     def get(self, **kwargs):
-        if kwargs["range"] == "'Güncel Fiyatlar'!A2:R":
+        if kwargs["range"] == "'Güncel Fiyatlar'!A2:P":
             return _Request({"values": self.current_rows})
-        if kwargs["range"] == "'Fiyat Geçmişi'!B2:K":
+        if kwargs["range"] == "'Fiyat Geçmişi'!B2:I":
             return _Request({"values": self.history_rows})
         if kwargs["range"] == "'Son Alış Arşivi'!A2:C":
             return _Request({"values": self.archive_rows})
@@ -46,8 +46,6 @@ def test_manual_last_purchase_price_and_date_are_preserved():
         "WGG244Z0TR",
         "Çamaşır Makinesi",
         30_000,
-        "YOK",
-        "VAR",
         32_000,
         8,
         25_000,
@@ -74,8 +72,6 @@ def test_manual_last_purchase_price_and_date_are_preserved():
         mediamarkt_url="https://www.mediamarkt.com.tr/example",
         mediamarkt_stock="Stokta",
         mediamarkt_seller="MediaMarkt",
-        mediamarkt_espark_stock="VAR",
-        mediamarkt_vega_stock="YOK",
         bosch_price=32_000,
         bosch_url="https://www.bosch-home.com.tr/example",
         bosch_status="Bosch'ta bulundu",
@@ -85,22 +81,22 @@ def test_manual_last_purchase_price_and_date_are_preserved():
 
     client.write_current_and_history([product], wholesale, support, {"WGG244Z0TR": 6})
 
-    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:R2")
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P2")
     current_row = current_update["body"]["values"][0]
     history_row = values.appends[0]["body"]["values"][0]
-    assert len(current_row) == 18
-    assert current_row[3:11] == ["VAR", "YOK", 32_000, 6, 25_000, 24_000, "15.07.2026", 1_000]
-    assert "ISNUMBER(K2)" in current_row[11]
+    assert len(current_row) == 16
+    assert current_row[4:9] == [6, 25_000, 24_000, "15.07.2026", 1_000]
+    assert "ISNUMBER(I2)" in current_row[9]
+    assert "(C2-J2)/J2" in current_row[10]
+    assert "ISNUMBER(I2)" in current_row[11]
     assert "(C2-L2)/L2" in current_row[12]
-    assert "ISNUMBER(K2)" in current_row[13]
-    assert "(C2-N2)/N2" in current_row[14]
-    assert len(history_row) == 18
-    assert history_row[4:12] == ["VAR", "YOK", 32_000, 6, 25_000, 24_000, "15.07.2026", 1_000]
-    assert history_row[13] == (29_500 - 24_000) / 24_000
-    assert history_row[15] == (29_500 - 23_000) / 23_000
+    assert len(history_row) == 16
+    assert history_row[5:10] == [6, 25_000, 24_000, "15.07.2026", 1_000]
+    assert history_row[11] == (29_500 - 24_000) / 24_000
+    assert history_row[13] == (29_500 - 23_000) / 23_000
     assert {item["range"] for item in values.clears} == {
         "'Son Alış Arşivi'!A2:D",
-        "'Güncel Fiyatlar'!A2:R",
+        "'Güncel Fiyatlar'!A2:P",
     }
 
 
@@ -137,16 +133,16 @@ def test_current_products_are_sorted_by_stock_descending():
         {"LOW": 2, "HIGH-B": 10, "HIGH-A": 10},
     )
 
-    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:R5")
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P5")
     current_rows = current_update["body"]["values"]
     assert [row[0] for row in current_rows] == ["HIGH-A", "HIGH-B", "LOW", "MISSING"]
-    assert [row[6] for row in current_rows] == [10, 10, 2, 0]
-    assert values.appends[0]["range"] == "'Fiyat Geçmişi'!A:R"
+    assert [row[4] for row in current_rows] == [10, 10, 2, 0]
+    assert values.appends[0]["range"] == "'Fiyat Geçmişi'!A:P"
 
 
 def test_returning_product_recovers_manual_values_from_history():
     historical_manual = [
-        ["WGG244Z0TR", "Çamaşır Makinesi", 30_000, "YOK", "VAR", 32_000, 8, 25_000, 24_000, "15.07.2026"]
+        ["WGG244Z0TR", "Çamaşır Makinesi", 30_000, 32_000, 8, 25_000, 24_000, "15.07.2026"]
     ]
     values = _Values([], historical_manual)
     client = GoogleSheetsClient.__new__(GoogleSheetsClient)
@@ -166,12 +162,12 @@ def test_returning_product_recovers_manual_values_from_history():
 
     client.write_current_and_history([product], {}, {}, {})
 
-    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:R2")
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P2")
     current_row = current_update["body"]["values"][0]
-    assert current_row[8:10] == [24_000, "15.07.2026"]
-    assert current_row[7] == "Üretimden Kalktı"
-    assert "Üretimden Kalktı" in current_row[11]
-    assert current_row[12] == '=IF(OR(NOT(ISNUMBER(L2));L2=0);"";(C2-L2)/L2)'
+    assert current_row[6:8] == [24_000, "15.07.2026"]
+    assert current_row[5] == "Üretimden Kalktı"
+    assert "Üretimden Kalktı" in current_row[9]
+    assert current_row[10] == '=IF(OR(NOT(ISNUMBER(J2));J2=0);"";(C2-J2)/J2)'
 
 
 def test_returning_product_recovers_manual_values_from_archive():
@@ -193,9 +189,9 @@ def test_returning_product_recovers_manual_values_from_archive():
 
     client.write_current_and_history([product], {}, {}, {})
 
-    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:R2")
+    current_update = next(item for item in values.updates if item["range"] == "'Güncel Fiyatlar'!A2:P2")
     current_row = current_update["body"]["values"][0]
-    assert current_row[8:10] == [24_000, "15.07.2026"]
+    assert current_row[6:8] == [24_000, "15.07.2026"]
 
 
 def test_product_that_leaves_stock_is_removed_from_current_sheet():
@@ -203,8 +199,6 @@ def test_product_that_leaves_stock_is_removed_from_current_sheet():
         "WGG244Z0TR",
         "Çamaşır Makinesi",
         30_000,
-        "YOK",
-        "VAR",
         32_000,
         8,
         25_000,
@@ -233,5 +227,5 @@ def test_product_that_leaves_stock_is_removed_from_current_sheet():
     assert values.appends == []
     assert {item["range"] for item in values.clears} == {
         "'Son Alış Arşivi'!A2:D",
-        "'Güncel Fiyatlar'!A2:R",
+        "'Güncel Fiyatlar'!A2:P",
     }
