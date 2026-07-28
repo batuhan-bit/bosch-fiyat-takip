@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from typing import Any
+from urllib.parse import urlsplit
 
 from curl_cffi import requests
 
@@ -11,6 +12,7 @@ class PoliteHttpClient:
     def __init__(self) -> None:
         self.delay = float(os.getenv("REQUEST_DELAY_SECONDS", "0.6"))
         self.timeout = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "30"))
+        self.mediamarkt_proxy = os.getenv("MEDIAMARKT_PROXY_URL", "").strip()
         # MediaMarkt, standart Python TLS imzasını otomasyon olarak engelleyebiliyor.
         # curl_cffi doğrudan resmi siteye bağlanırken güncel Chrome ağ imzasını kullanır.
         self.session = requests.Session(impersonate="chrome")
@@ -39,11 +41,23 @@ class PoliteHttpClient:
 
     def get(self, url: str) -> Any:
         response: Any = None
+        hostname = (urlsplit(url).hostname or "").casefold()
+        use_mediamarkt_proxy = bool(self.mediamarkt_proxy) and (
+            hostname == "mediamarkt.com.tr" or hostname.endswith(".mediamarkt.com.tr")
+        )
         for attempt in range(4):
             elapsed = time.monotonic() - self._last_request
             if elapsed < self.delay:
                 time.sleep(self.delay - elapsed)
-            response = self.session.get(url, timeout=self.timeout, allow_redirects=True)
+            request_options: dict[str, Any] = {}
+            if use_mediamarkt_proxy:
+                request_options["proxy"] = self.mediamarkt_proxy
+            response = self.session.get(
+                url,
+                timeout=self.timeout,
+                allow_redirects=True,
+                **request_options,
+            )
             self._last_request = time.monotonic()
             if response.status_code not in (429, 500, 502, 503, 504):
                 return response

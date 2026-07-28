@@ -12,9 +12,7 @@ concurrency:
 
 jobs:
   check-prices:
-    # MediaMarkt bazı GitHub veri merkezi ağlarını 403 ile engelliyor.
-    # Windows havuzu ayrı bir çıkış ağı sağlıyor; veri kaynağı yine resmi siteler.
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Projeyi indir
@@ -36,4 +34,5 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MEDIAMARKT_PROXY_URL: ${{ secrets.MEDIAMARKT_PROXY_URL }}
         run: python -m bosch_tracker.main

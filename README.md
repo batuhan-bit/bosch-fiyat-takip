@@ -128,16 +128,29 @@ Slack webhook adresi GitHub Secrets içinde saklanacak. Günlük kontrol sonunda
 4. Adresi GitHub'da `SLACK_WEBHOOK_URL` isimli repository secret olarak
    kaydedin.
 
-### 3. GitHub Secrets
+### 3. MediaMarkt proxy
+
+MediaMarkt istekleri Türkiye konut tipi proxy üzerinden gönderilir. Proxy
+yalnızca `mediamarkt.com.tr` alan adında kullanılır; Bosch, Google Sheets ve
+Slack trafiği proxy kotasını tüketmez. Decodo'da kullanıcı adı/parola ile
+Türkiye hedefli, 30 dakikalık sabit oturum oluşturun ve bağlantıyı şu biçimde
+GitHub secret olarak kaydedin:
+
+`http://KULLANICI_ADI:PAROLA@gate.decodo.com:7000`
+
+Secret adı `MEDIAMARKT_PROXY_URL` olmalıdır.
+
+### 4. GitHub Secrets
 
 Repository ayarlarında `Settings > Secrets and variables > Actions` yoluna
-giderek şu üç secret'ı oluşturun:
+giderek şu dört secret'ı oluşturun:
 
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SERVICE_ACCOUNT_JSON`
 - `SLACK_WEBHOOK_URL`
+- `MEDIAMARKT_PROXY_URL`
 
-### 4. Aylık liste güncellemesi
+### 5. Aylık liste güncellemesi
 
 Yeni dosyaları ilgili `girdiler` klasörlerine koyduktan sonra aşağıdaki komut,
 aktif toptan ve destek kayıtlarını Google Sheets'e aktarır. Aile Bakanlığı
