@@ -12,9 +12,9 @@ concurrency:
 
 jobs:
   check-prices:
-    # MediaMarkt, GitHub'ın standart Linux çıkış IP'lerini 403 ile engelliyor.
-    # macOS havuzu farklı bir ağdan çıkar; bot yine yalnızca resmi siteleri okur.
-    runs-on: macos-latest
+    # MediaMarkt bazı GitHub veri merkezi ağlarını 403 ile engelliyor.
+    # Windows havuzu ayrı bir çıkış ağı sağlıyor; veri kaynağı yine resmi siteler.
+    runs-on: windows-latest
     timeout-minutes: 30
     steps:
       - name: Projeyi indir
