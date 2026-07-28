@@ -5,6 +5,12 @@ on:
     # Türkiye saatiyle 09:00 (UTC+3)
     - cron: "0 6 * * *"
   workflow_dispatch:
+    inputs:
+      proxy_test:
+        description: "Yalnızca iki ürünle proxy bağlantısını sına"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: bosch-daily-price-check
@@ -35,4 +41,11 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           MEDIAMARKT_PROXY_URL: ${{ secrets.MEDIAMARKT_PROXY_URL }}
-        run: python -m bosch_tracker.main
+          MAX_PRODUCTS: ${{ inputs.proxy_test && '2' || '0' }}
+          PROXY_TEST: ${{ inputs.proxy_test && 'true' || 'false' }}
+        run: |
+          if [ "$PROXY_TEST" = "true" ]; then
+            python -m bosch_tracker.main --dry-run
+          else
+            python -m bosch_tracker.main
+          fi
