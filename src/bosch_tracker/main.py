@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .bosch import enrich_from_bosch
 from .google_sheets import GoogleSheetsClient
 from .http_client import PoliteHttpClient
 from .mediamarkt import MediaMarktSource
+from .store_stock import enrich_store_stock
 from .slack import send_daily_summary
 
 def run(dry_run: bool, output_json: Path | None) -> None:
     client = PoliteHttpClient()
     products = MediaMarktSource(client).fetch_all()
     for product in products:
+        enrich_store_stock(product, client)
         enrich_from_bosch(product, client)
 
     if output_json:
@@ -28,7 +31,8 @@ def run(dry_run: bool, output_json: Path | None) -> None:
     try:
         wholesale, support, stock = sheets.read_reference_data()
         summary = sheets.write_current_and_history(products, wholesale, support, stock)
-        send_daily_summary(summary)
+        if os.getenv("SKIP_SLACK", "").casefold() not in {"1", "true", "yes"}:
+            send_daily_summary(summary)
     except Exception as exc:
         try:
             sheets.log_error("Günlük çalışma", str(exc))

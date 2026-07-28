@@ -11,6 +11,11 @@ on:
         required: false
         type: boolean
         default: false
+      skip_slack:
+        description: "Bu elle çalıştırmada Slack mesajını gönderme"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: bosch-daily-price-check
@@ -43,6 +48,7 @@ jobs:
           MEDIAMARKT_PROXY_URL: ${{ secrets.MEDIAMARKT_PROXY_URL }}
           MAX_PRODUCTS: ${{ inputs.proxy_test && '2' || '0' }}
           PROXY_TEST: ${{ inputs.proxy_test && 'true' || 'false' }}
+          SKIP_SLACK: ${{ inputs.skip_slack && 'true' || 'false' }}
         run: |
           if [ "$PROXY_TEST" = "true" ]; then
             python -m bosch_tracker.main --dry-run

@@ -43,6 +43,8 @@ Ana tabloda şu alanlar bulunacaktır:
 - Ürün Modeli
 - Kategori
 - MediaMarkt Fiyatı
+- Espark Stok
+- Vega Stok
 - Bosch Satış Fiyatı
 - Eldem Stok
 - Toptan Fiyatımız
@@ -59,6 +61,10 @@ Ana tabloda şu alanlar bulunacaktır:
 
 Ürünler `Eldem Stok` miktarı en yüksekten en düşüğe doğru sıralanır. Stokların
 eşit olması durumunda kategori ve model adı kullanılır.
+
+`Espark Stok` ve `Vega Stok` alanları MediaMarkt'ın mağazadan teslim alma
+bilgisine göre `VAR` veya `YOK` olarak güncellenir. Mağaza bilgisi geçici olarak
+alınamazsa yanlış stok bilgisi yazmamak için `KONTROL EDİLEMEDİ` gösterilir.
 
 Hesaplamalar:
 

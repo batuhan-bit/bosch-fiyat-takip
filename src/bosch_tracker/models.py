@@ -12,6 +12,8 @@ class ProductPrice:
     mediamarkt_url: str
     mediamarkt_stock: str
     mediamarkt_seller: str
+    mediamarkt_espark_stock: str = "KONTROL EDİLEMEDİ"
+    mediamarkt_vega_stock: str = "KONTROL EDİLEMEDİ"
     bosch_price: float | None = None
     bosch_url: str = ""
     bosch_status: str = "Kontrol edilmedi"
@@ -27,4 +29,3 @@ class ReferenceValue:
     source_type: str
     period: str = ""
     source_file: str = ""
-

@@ -28,6 +28,8 @@ CURRENT_HEADERS = [
     "Ürün Modeli",
     "Kategori",
     "MediaMarkt Fiyatı",
+    "Espark Stok",
+    "Vega Stok",
     "Bosch Satış Fiyatı",
     "Eldem Stok",
     "Toptan Fiyatımız",
@@ -92,16 +94,16 @@ class GoogleSheetsClient:
         return wholesale, support, stock
 
     def _current_rows(self) -> list[list[Any]]:
-        return self._get(f"'{CURRENT_SHEET}'!A2:P")
+        return self._get(f"'{CURRENT_SHEET}'!A2:R")
 
     def _latest_manual_values(self) -> dict[str, tuple[Any, Any]]:
         latest: dict[str, tuple[Any, Any]] = {}
-        for row in self._get(f"'{HISTORY_SHEET}'!B2:I"):
+        for row in self._get(f"'{HISTORY_SHEET}'!B2:K"):
             if not row:
                 continue
             model = normalize_model(str(row[0]))
-            manual_last = row[6] if len(row) > 6 else ""
-            manual_last_date = row[7] if len(row) > 7 else ""
+            manual_last = row[8] if len(row) > 8 else ""
+            manual_last_date = row[9] if len(row) > 9 else ""
             latest[model] = (manual_last, manual_last_date)
         for row in self._get(f"'{MANUAL_ARCHIVE_SHEET}'!A2:C"):
             if not row:
@@ -123,8 +125,8 @@ class GoogleSheetsClient:
             if not row:
                 continue
             model = normalize_model(str(row[0]))
-            manual_last = row[6] if len(row) > 6 else ""
-            manual_last_date = row[7] if len(row) > 7 else ""
+            manual_last = row[8] if len(row) > 8 else ""
+            manual_last_date = row[9] if len(row) > 9 else ""
             if manual_last != "" or manual_last_date != "":
                 archive[model] = (manual_last, manual_last_date)
 
@@ -173,8 +175,8 @@ class GoogleSheetsClient:
             seen.add(model)
             old = old_by_model.get(model, [])
             historical_last, historical_last_date = historical_manual.get(model, ("", ""))
-            manual_last = old[6] if old and len(old) > 6 else historical_last
-            manual_last_date = old[7] if old and len(old) > 7 else historical_last_date
+            manual_last = old[8] if old and len(old) > 8 else historical_last
+            manual_last_date = old[9] if old and len(old) > 9 else historical_last_date
             wholesale_value = wholesale.get(model)
             support_value = support.get(model)
             stock_cell: Any = stock.get(model, 0 if stock else "")
@@ -198,22 +200,24 @@ class GoogleSheetsClient:
                 net_last_profitability = (product.mediamarkt_price - net_last_value) / net_last_value
             row_number = len(rows) + 2
             net_wholesale = (
-                f'=IF(F{row_number}="Üretimden Kalktı";"Üretimden Kalktı";'
-                f'F{row_number}-IF(ISNUMBER(I{row_number});I{row_number};0))'
+                f'=IF(H{row_number}="Üretimden Kalktı";"Üretimden Kalktı";'
+                f'H{row_number}-IF(ISNUMBER(K{row_number});K{row_number};0))'
             )
             net_wholesale_profit = (
-                f'=IF(OR(NOT(ISNUMBER(J{row_number}));J{row_number}=0);"";'
-                f'(C{row_number}-J{row_number})/J{row_number})'
-            )
-            net_last = f'=IF(G{row_number}="";"";G{row_number}-IF(ISNUMBER(I{row_number});I{row_number};0))'
-            net_last_profit = (
                 f'=IF(OR(NOT(ISNUMBER(L{row_number}));L{row_number}=0);"";'
                 f'(C{row_number}-L{row_number})/L{row_number})'
+            )
+            net_last = f'=IF(I{row_number}="";"";I{row_number}-IF(ISNUMBER(K{row_number});K{row_number};0))'
+            net_last_profit = (
+                f'=IF(OR(NOT(ISNUMBER(N{row_number}));N{row_number}=0);"";'
+                f'(C{row_number}-N{row_number})/N{row_number})'
             )
             row = [
                 model,
                 product.category,
                 mediamarkt_price,
+                product.mediamarkt_espark_stock,
+                product.mediamarkt_vega_stock,
                 bosch_price,
                 stock_cell,
                 wholesale_cell,
@@ -235,6 +239,8 @@ class GoogleSheetsClient:
                     model,
                     product.category,
                     mediamarkt_price,
+                    product.mediamarkt_espark_stock,
+                    product.mediamarkt_vega_stock,
                     bosch_price,
                     stock_cell,
                     wholesale_cell,
@@ -259,18 +265,18 @@ class GoogleSheetsClient:
 
         removed_models = sorted(set(old_by_model) - seen)
 
-        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:P").execute()
+        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:R").execute()
         if rows:
             self.values.update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{CURRENT_SHEET}'!A2:P{len(rows)+1}",
+                range=f"'{CURRENT_SHEET}'!A2:R{len(rows)+1}",
                 valueInputOption="USER_ENTERED",
                 body={"values": rows},
             ).execute()
         if history_rows:
             self.values.append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{HISTORY_SHEET}'!A:P",
+                range=f"'{HISTORY_SHEET}'!A:R",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
                 body={"values": history_rows},
