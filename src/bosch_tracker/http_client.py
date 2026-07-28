@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import os
 import time
+from typing import Any
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from curl_cffi import requests
 
 
 class PoliteHttpClient:
     def __init__(self) -> None:
         self.delay = float(os.getenv("REQUEST_DELAY_SECONDS", "0.6"))
         self.timeout = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "30"))
-        self.session = requests.Session()
+        # MediaMarkt, standart Python TLS imzasını otomasyon olarak engelleyebiliyor.
+        # curl_cffi doğrudan resmi siteye bağlanırken güncel Chrome ağ imzasını kullanır.
+        self.session = requests.Session(impersonate="chrome")
         self.session.headers.update(
             {
                 "User-Agent": (
@@ -34,19 +35,18 @@ class PoliteHttpClient:
                 "Upgrade-Insecure-Requests": "1",
             }
         )
-        retry = Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=(429, 500, 502, 503, 504),
-            allowed_methods=("GET",),
-        )
-        self.session.mount("https://", HTTPAdapter(max_retries=retry))
         self._last_request = 0.0
 
-    def get(self, url: str) -> requests.Response:
-        elapsed = time.monotonic() - self._last_request
-        if elapsed < self.delay:
-            time.sleep(self.delay - elapsed)
-        response = self.session.get(url, timeout=self.timeout, allow_redirects=True)
-        self._last_request = time.monotonic()
+    def get(self, url: str) -> Any:
+        response: Any = None
+        for attempt in range(4):
+            elapsed = time.monotonic() - self._last_request
+            if elapsed < self.delay:
+                time.sleep(self.delay - elapsed)
+            response = self.session.get(url, timeout=self.timeout, allow_redirects=True)
+            self._last_request = time.monotonic()
+            if response.status_code not in (429, 500, 502, 503, 504):
+                return response
+            if attempt < 3:
+                time.sleep(2**attempt)
         return response
