@@ -21,6 +21,11 @@ Yalnızca aşağıdaki resmi siteler kullanılacaktır:
 Pazaryeri satıcıları, kuponlar, sepette indirimler ve takas kampanyaları
 hesaplamaya dahil edilmez.
 
+Güncel Fiyatlar ve Fiyat Geçmişi sayfalarına yalnızca MediaMarkt'ın doğrudan
+satıcısı olduğu ve o gün satın alınabilir stoğu bulunan ürünler yazılır. Stoktan
+çıkan ürün Güncel Fiyatlar'dan kaldırılır; yeniden stoğa girerse tekrar eklenir.
+Son alış fiyatı ve tarihi, geri dönen ürün için geçmiş kayıttan korunur.
+
 ## Google Sheets sayfaları
 
 1. Güncel Fiyatlar
@@ -41,8 +46,6 @@ Ana tabloda şu alanlar bulunacaktır:
 - Bosch Fiyat Farkı Desteği
 - Net Toptan Fiyat
 - Net Son Alış Fiyatı
-- MediaMarkt Stok Durumu
-- Bosch'ta Bulunma Durumu
 - Ürün Durumu
 - Son Kontrol Tarihi
 - MediaMarkt Linki
@@ -98,7 +101,8 @@ Slack webhook adresi GitHub Secrets içinde saklanacak. Günlük kontrol sonunda
 ## Güncel teknik durum
 
 - Dört MediaMarkt Bosch kategorisi yapılandırılmış ürün verilerinden taranır.
-- Ürün sayfasında marka `BOSCH` ve satıcı `MediaMarkt` olarak doğrulanır.
+- Ürün sayfasında marka `BOSCH`, satıcı `MediaMarkt` ve satın alınabilir stok
+  durumu doğrulanır.
 - Model, Bosch Türkiye resmi sitesinde tam kodla aranır.
 - Google Sheets'teki Son Alış Fiyatımız ve Son Alış Tarihi sütunları günlük
   güncellemede korunur.

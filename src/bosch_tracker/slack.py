@@ -21,10 +21,10 @@ def send_daily_summary(summary: dict[str, Any]) -> None:
     sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
     changed = summary["changed"]
     lines = [
-        f"*Kontrol edilen ürün:* {summary['checked']}",
+        f"*MediaMarkt'ta satılabilir ürün:* {summary['checked']}",
         f"*Fiyatı değişen:* {len(changed)}",
         f"*Yeni ürün:* {len(summary['new_models'])}",
-        f"*MediaMarkt'ta artık bulunamayan:* {len(summary['removed_models'])}",
+        f"*Stoktan çıkan ürün:* {len(summary['removed_models'])}",
         f"*Bosch sitesinde eşleşmeyen:* {len(summary['bosch_unmatched'])}",
     ]
     if changed:

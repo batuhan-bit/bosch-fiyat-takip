@@ -33,8 +33,6 @@ CURRENT_HEADERS = [
     "Bosch Fiyat Farkı Desteği (KDV Hariç)",
     "Net Toptan Fiyat",
     "Net Son Alış Fiyatı",
-    "MediaMarkt Stok Durumu",
-    "Bosch'ta Bulunma Durumu",
     "Toptan Liste Durumu",
     "Destek Kaynağı",
     "Son Kontrol Tarihi",
@@ -85,7 +83,18 @@ class GoogleSheetsClient:
         return wholesale, support
 
     def _current_rows(self) -> list[list[Any]]:
-        return self._get(f"'{CURRENT_SHEET}'!A2:Q")
+        return self._get(f"'{CURRENT_SHEET}'!A2:O")
+
+    def _latest_manual_values(self) -> dict[str, tuple[Any, Any]]:
+        latest: dict[str, tuple[Any, Any]] = {}
+        for row in self._get(f"'{HISTORY_SHEET}'!B2:H"):
+            if not row:
+                continue
+            model = normalize_model(str(row[0]))
+            manual_last = row[5] if len(row) > 5 else ""
+            manual_last_date = row[6] if len(row) > 6 else ""
+            latest[model] = (manual_last, manual_last_date)
+        return latest
 
     def write_current_and_history(
         self,
@@ -95,6 +104,7 @@ class GoogleSheetsClient:
     ) -> dict[str, Any]:
         old_rows = self._current_rows()
         old_by_model = {normalize_model(str(row[0])): row for row in old_rows if row}
+        historical_manual = self._latest_manual_values()
         now = datetime.now(ISTANBUL).strftime("%Y-%m-%d %H:%M:%S")
         rows: list[list[Any]] = []
         history_rows: list[list[Any]] = []
@@ -106,8 +116,9 @@ class GoogleSheetsClient:
             model = product.model
             seen.add(model)
             old = old_by_model.get(model, [])
-            manual_last = old[5] if len(old) > 5 else ""
-            manual_last_date = old[6] if len(old) > 6 else ""
+            historical_last, historical_last_date = historical_manual.get(model, ("", ""))
+            manual_last = old[5] if old and len(old) > 5 else historical_last
+            manual_last_date = old[6] if old and len(old) > 6 else historical_last_date
             wholesale_value = wholesale.get(model)
             support_value = support.get(model)
             wholesale_cell: Any = wholesale_value.amount if wholesale_value else "YOK"
@@ -134,8 +145,6 @@ class GoogleSheetsClient:
                 support_cell,
                 net_wholesale,
                 net_last,
-                product.mediamarkt_stock,
-                product.bosch_status,
                 wholesale_status,
                 support_source,
                 now,
@@ -156,8 +165,6 @@ class GoogleSheetsClient:
                     support_cell,
                     net_wholesale_value,
                     net_last_value,
-                    product.mediamarkt_stock,
-                    product.bosch_status,
                     wholesale_status,
                     support_source,
                     product.mediamarkt_url,
@@ -173,26 +180,19 @@ class GoogleSheetsClient:
                     changed.append({"model": model, "old": old_price, "new": product.mediamarkt_price})
 
         removed_models = sorted(set(old_by_model) - seen)
-        for model in removed_models:
-            old = list(old_by_model[model])
-            old += [""] * (17 - len(old))
-            old[10] = "MediaMarkt'ta artık bulunamadı"
-            old[14] = now
-            rows.append(old[:17])
-            history_rows.append([now, *old[:14], old[15], old[16]])
 
-        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:Q").execute()
+        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:O").execute()
         if rows:
             self.values.update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{CURRENT_SHEET}'!A2:Q{len(rows)+1}",
+                range=f"'{CURRENT_SHEET}'!A2:O{len(rows)+1}",
                 valueInputOption="USER_ENTERED",
                 body={"values": rows},
             ).execute()
         if history_rows:
             self.values.append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{HISTORY_SHEET}'!A:Q",
+                range=f"'{HISTORY_SHEET}'!A:O",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
                 body={"values": history_rows},

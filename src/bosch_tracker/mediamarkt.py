@@ -17,6 +17,11 @@ MEDIAMARKT_CATEGORIES = {
 }
 
 
+def _is_mediamarkt_seller(value: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]", "", value.casefold())
+    return normalized.startswith("mediamarkt")
+
+
 def _with_page(url: str, page: int) -> str:
     parts = urlsplit(url)
     query = dict(parse_qsl(parts.query))
@@ -63,22 +68,23 @@ def parse_product_page(html: str, fallback_url: str, category: str) -> ProductPr
 
     third_party_marker = 'data-test="mms-third-party-provider-link"' in html
     seller_names = sorted(set(re.findall(r'"sellerName":"([^"\\]+)"', html)))
-    if third_party_marker or seller_names:
-        seller = ", ".join(seller_names) or "Pazaryeri satıcısı"
-        if "mediamarkt" not in seller.lower():
-            return None
-    else:
-        seller = "MediaMarkt"
+    if seller_names and not all(_is_mediamarkt_seller(name) for name in seller_names):
+        return None
+    if third_party_marker and not seller_names:
+        return None
+    seller = "MediaMarkt"
 
     offer = first_offer(product.get("offers"))
     availability = str(offer.get("availability", ""))
-    stock = "Stokta" if availability.endswith("InStock") else "Stokta yok"
+    price = as_float(offer.get("price"))
+    if not availability.endswith("InStock") or price is None:
+        return None
     return ProductPrice(
         model=model,
         category=category,
-        mediamarkt_price=as_float(offer.get("price")),
+        mediamarkt_price=price,
         mediamarkt_url=str(product.get("url") or fallback_url),
-        mediamarkt_stock=stock,
+        mediamarkt_stock="Stokta",
         mediamarkt_seller=seller,
     )
 

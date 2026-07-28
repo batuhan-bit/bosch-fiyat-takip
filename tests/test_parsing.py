@@ -33,11 +33,20 @@ def test_mediamarkt_owned_product() -> None:
 def test_marketplace_product_is_rejected() -> None:
     html = '''
     <script type="application/ld+json">
-    {"@context":"https://schema.org/","@type":"BuyAction","object":{"@type":"Product","brand":{"@type":"Brand","name":"BOSCH"},"name":"BOSCH WGK242Z0TR Çamaşır Makinesi","offers":{"@type":"Offer","price":40000}}}
+    {"@context":"https://schema.org/","@type":"BuyAction","object":{"@type":"Product","brand":{"@type":"Brand","name":"BOSCH"},"name":"BOSCH WGK242Z0TR Çamaşır Makinesi","offers":{"@type":"Offer","price":40000,"availability":"https://schema.org/InStock"}}}
     </script>
     <a data-test="mms-third-party-provider-link">RAST ENTERPRISE</a>
     '''
     assert parse_product_page(html, "https://www.mediamarkt.com.tr/p/2", "Çamaşır Makinesi") is None
+
+
+def test_out_of_stock_product_is_rejected() -> None:
+    html = '''
+    <script type="application/ld+json">
+    {"@context":"https://schema.org/","@type":"BuyAction","object":{"@type":"Product","brand":{"@type":"Brand","name":"BOSCH"},"name":"BOSCH WGK242Z0TR Çamaşır Makinesi","offers":{"@type":"Offer","price":36999,"availability":"https://schema.org/OutOfStock"}}}
+    </script>
+    '''
+    assert parse_product_page(html, "https://www.mediamarkt.com.tr/p/4", "Çamaşır Makinesi") is None
 
 
 def test_non_bosch_sponsored_product_is_rejected() -> None:

@@ -3,7 +3,8 @@
 ## Günlük akış
 
 1. MediaMarkt Türkiye'deki Bosch beyaz eşya ürünlerini kontrol et.
-2. Yalnızca satıcısı MediaMarkt olan ürünleri kabul et.
+2. Yalnızca satıcısı MediaMarkt olan ve o gün satın alınabilir stoğu bulunan
+   ürünleri kabul et.
 3. Tam model kodunu çıkar ve Bosch Türkiye resmi sitesinde eşleştir.
 4. Güncel fiyatları Google Sheets'e yaz.
 5. Son alış fiyatı ve son alış tarihi hücrelerine dokunma; bu alanlar kullanıcı
@@ -12,7 +13,8 @@
    alanlarına `YOK` yaz; ürünü silme ve kendiliğinden phase-out kabul etme.
 7. Son alış fiyatı girilmişse, toptan fiyat bulunmasa bile geçerli Bosch
    desteğini düşerek Net Son Alış Fiyatını hesapla.
-8. Günlük fiyat kaydını Fiyat Geçmişi sayfasına ekle.
+8. Yalnızca o gün stokta olan ürünlerin günlük fiyat kaydını Fiyat Geçmişi
+   sayfasına ekle; stoktan çıkan ürünü Güncel Fiyatlar'dan kaldır.
 9. Bulunamayan veya eşleşmeyen ürünleri Ayarlar ve Hatalar sayfasına yaz.
 10. Günlük özeti Slack'e gönder.
 
