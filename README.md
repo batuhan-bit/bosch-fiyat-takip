@@ -118,7 +118,7 @@ Slack webhook adresi GitHub Secrets içinde saklanacak. Günlük kontrol sonunda
 - Model, Bosch Türkiye resmi sitesinde tam kodla aranır.
 - Google Sheets'teki Son Alış Fiyatımız ve Son Alış Tarihi sütunları günlük
   güncellemede korunur.
-- GitHub Actions her gün Türkiye saatiyle 09:00'da çalışır.
+- GitHub Actions her gün Türkiye saatiyle 09:17'de çalışır.
 
 ## Kurulum özeti
 

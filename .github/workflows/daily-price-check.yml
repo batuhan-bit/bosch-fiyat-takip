@@ -2,8 +2,8 @@ name: Günlük Bosch fiyat kontrolü
 
 on:
   schedule:
-    # Türkiye saatiyle 09:00 (UTC+3)
-    - cron: "0 6 * * *"
+    # Türkiye saatiyle 09:17 (UTC+3). Saat başı GitHub yoğunluğunu önler.
+    - cron: "17 6 * * *"
   workflow_dispatch:
     inputs:
       proxy_test:
