@@ -108,7 +108,9 @@ Bu klasörlerdeki ticari dosyalar güvenlik amacıyla GitHub'a gönderilmez.
 
 Bot GitHub Actions üzerinde günde bir kez çalışacak. Google erişim bilgileri ve
 Slack webhook adresi GitHub Secrets içinde saklanacak. Günlük kontrol sonunda
-özet tablo ve Google Sheets bağlantısı Slack kanalına gönderilecek.
+özet tablo ve Google Sheets bağlantısı Slack kanalına gönderilecek. Fiyatı
+değişen ürünler eski ve yeni fiyatlarıyla; yeni ürünler ile stoktan çıkan
+ürünler model kodlarıyla mesajın not bölümünde listelenecek.
 
 ## Güncel teknik durum
 

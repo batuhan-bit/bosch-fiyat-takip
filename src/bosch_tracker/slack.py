@@ -9,10 +9,29 @@ import requests
 
 
 ISTANBUL = ZoneInfo("Europe/Istanbul")
+SLACK_SECTION_LIMIT = 2900
 
 
 def _money(value: float) -> str:
     return f"₺{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _note_blocks(title: str, lines: list[str]) -> list[dict[str, Any]]:
+    if not lines:
+        return []
+
+    blocks: list[dict[str, Any]] = []
+    heading = f"*Not – {title}*"
+    current = heading
+    for line in lines:
+        candidate = f"{current}\n{line}"
+        if len(candidate) > SLACK_SECTION_LIMIT and current != heading:
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": current}})
+            current = f"{heading} _(devam)_\n{line}"
+        else:
+            current = candidate
+    blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": current}})
+    return blocks
 
 
 def send_daily_summary(summary: dict[str, Any]) -> None:
@@ -27,12 +46,22 @@ def send_daily_summary(summary: dict[str, Any]) -> None:
         f"*Stoktan çıkan ürün:* {len(summary['removed_models'])}",
         f"*Bosch sitesinde eşleşmeyen:* {len(summary['bosch_unmatched'])}",
     ]
-    if changed:
-        lines.append("\n*MediaMarkt fiyat değişiklikleri*")
-        for item in changed[:15]:
-            lines.append(f"• `{item['model']}`: {_money(item['old'])} → {_money(item['new'])}")
-        if len(changed) > 15:
-            lines.append(f"• … ve {len(changed) - 15} değişiklik daha")
+    detail_blocks: list[dict[str, Any]] = []
+    detail_blocks.extend(
+        _note_blocks(
+            "Fiyatı değişen ürünler",
+            [f"• `{item['model']}`: {_money(item['old'])} → {_money(item['new'])}" for item in changed],
+        )
+    )
+    detail_blocks.extend(
+        _note_blocks("Yeni ürünler", [f"• `{model}`" for model in summary["new_models"]])
+    )
+    detail_blocks.extend(
+        _note_blocks(
+            "Stoktan çıkan ürünler",
+            [f"• `{model}`" for model in summary["removed_models"]],
+        )
+    )
     payload = {
         "text": "Bosch günlük fiyat takip raporu",
         "blocks": [
@@ -47,6 +76,7 @@ def send_daily_summary(summary: dict[str, Any]) -> None:
                     "text": f"*Tarih:* {datetime.now(ISTANBUL):%d.%m.%Y %H:%M}\n" + "\n".join(lines),
                 },
             },
+            *detail_blocks,
             {
                 "type": "actions",
                 "elements": [
