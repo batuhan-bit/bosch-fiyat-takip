@@ -23,6 +23,7 @@ STOCK_SHEET = "Eldem Stok Raporu"
 MANUAL_ARCHIVE_SHEET = "Son Alış Arşivi"
 ERROR_SHEET = "Ayarlar ve Hatalar"
 ISTANBUL = ZoneInfo("Europe/Istanbul")
+GOOGLE_API_RETRIES = 5
 
 CURRENT_HEADERS = [
     "Ürün Modeli",
@@ -53,6 +54,11 @@ def _credentials_from_env() -> Credentials:
     return Credentials.from_service_account_info(info, scopes=SCOPES)
 
 
+def _execute(request: Any) -> Any:
+    """Geçici kota ve 5xx hatalarında Google istemcisinin yeniden denemesini kullan."""
+    return request.execute(num_retries=GOOGLE_API_RETRIES)
+
+
 class GoogleSheetsClient:
     def __init__(self) -> None:
         self.spreadsheet_id = os.environ["GOOGLE_SHEET_ID"].strip()
@@ -60,11 +66,13 @@ class GoogleSheetsClient:
         self.values = self.service.spreadsheets().values()
 
     def _get(self, range_name: str) -> list[list[Any]]:
-        response = self.values.get(
-            spreadsheetId=self.spreadsheet_id,
-            range=range_name,
-            valueRenderOption="UNFORMATTED_VALUE",
-        ).execute()
+        response = _execute(
+            self.values.get(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name,
+                valueRenderOption="UNFORMATTED_VALUE",
+            )
+        )
         return response.get("values", [])
 
     def read_reference_data(
@@ -129,17 +137,21 @@ class GoogleSheetsClient:
                 archive[model] = (manual_last, manual_last_date)
 
         rows = [[model, values[0], values[1], now] for model, values in sorted(archive.items())]
-        self.values.clear(
-            spreadsheetId=self.spreadsheet_id,
-            range=f"'{MANUAL_ARCHIVE_SHEET}'!A2:D",
-        ).execute()
-        if rows:
-            self.values.update(
+        _execute(
+            self.values.clear(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{MANUAL_ARCHIVE_SHEET}'!A2:D{len(rows)+1}",
-                valueInputOption="USER_ENTERED",
-                body={"values": rows},
-            ).execute()
+                range=f"'{MANUAL_ARCHIVE_SHEET}'!A2:D",
+            )
+        )
+        if rows:
+            _execute(
+                self.values.update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{MANUAL_ARCHIVE_SHEET}'!A2:D{len(rows)+1}",
+                    valueInputOption="USER_ENTERED",
+                    body={"values": rows},
+                )
+            )
 
     def write_current_and_history(
         self,
@@ -259,22 +271,26 @@ class GoogleSheetsClient:
 
         removed_models = sorted(set(old_by_model) - seen)
 
-        self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:P").execute()
+        _execute(self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{CURRENT_SHEET}'!A2:P"))
         if rows:
-            self.values.update(
-                spreadsheetId=self.spreadsheet_id,
-                range=f"'{CURRENT_SHEET}'!A2:P{len(rows)+1}",
-                valueInputOption="USER_ENTERED",
-                body={"values": rows},
-            ).execute()
+            _execute(
+                self.values.update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{CURRENT_SHEET}'!A2:P{len(rows)+1}",
+                    valueInputOption="USER_ENTERED",
+                    body={"values": rows},
+                )
+            )
         if history_rows:
-            self.values.append(
-                spreadsheetId=self.spreadsheet_id,
-                range=f"'{HISTORY_SHEET}'!A:P",
-                valueInputOption="USER_ENTERED",
-                insertDataOption="INSERT_ROWS",
-                body={"values": history_rows},
-            ).execute()
+            _execute(
+                self.values.append(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{HISTORY_SHEET}'!A:P",
+                    valueInputOption="USER_ENTERED",
+                    insertDataOption="INSERT_ROWS",
+                    body={"values": history_rows},
+                )
+            )
         return {
             "checked": len(sorted_products),
             "changed": changed,
@@ -294,20 +310,26 @@ class GoogleSheetsClient:
             (WHOLESALE_SHEET, "A2:D", wholesale_rows),
             (SUPPORT_SHEET, "A2:E", support_rows),
         ):
-            self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{sheet}'!{columns}").execute()
+            _execute(self.values.clear(spreadsheetId=self.spreadsheet_id, range=f"'{sheet}'!{columns}"))
             if rows:
-                self.values.update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f"'{sheet}'!A2",
-                    valueInputOption="USER_ENTERED",
-                    body={"values": rows},
-                ).execute()
+                _execute(
+                    self.values.update(
+                        spreadsheetId=self.spreadsheet_id,
+                        range=f"'{sheet}'!A2",
+                        valueInputOption="USER_ENTERED",
+                        body={"values": rows},
+                    )
+                )
 
     def log_error(self, stage: str, message: str, model: str = "", url: str = "") -> None:
-        self.values.append(
-            spreadsheetId=self.spreadsheet_id,
-            range=f"'{ERROR_SHEET}'!A:E",
-            valueInputOption="USER_ENTERED",
-            insertDataOption="INSERT_ROWS",
-            body={"values": [[datetime.now(ISTANBUL).isoformat(timespec="seconds"), stage, model, message[:1000], url]]},
-        ).execute()
+        _execute(
+            self.values.append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{ERROR_SHEET}'!A:E",
+                valueInputOption="USER_ENTERED",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [
+                    [datetime.now(ISTANBUL).isoformat(timespec="seconds"), stage, model, message[:1000], url]
+                ]},
+            )
+        )

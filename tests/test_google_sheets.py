@@ -1,4 +1,4 @@
-from bosch_tracker.google_sheets import GoogleSheetsClient
+from bosch_tracker.google_sheets import GOOGLE_API_RETRIES, GoogleSheetsClient, _execute
 from bosch_tracker.models import ProductPrice, ReferenceValue
 
 
@@ -6,8 +6,20 @@ class _Request:
     def __init__(self, response=None):
         self.response = response or {}
 
-    def execute(self):
+    def execute(self, num_retries=0):
         return self.response
+
+
+def test_google_requests_use_automatic_retries():
+    calls = []
+
+    class Request:
+        def execute(self, num_retries=0):
+            calls.append(num_retries)
+            return {"ok": True}
+
+    assert _execute(Request()) == {"ok": True}
+    assert calls == [GOOGLE_API_RETRIES]
 
 
 class _Values:

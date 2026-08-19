@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from .bosch import enrich_from_bosch
@@ -32,8 +33,9 @@ def run(dry_run: bool, output_json: Path | None) -> None:
     except Exception as exc:
         try:
             sheets.log_error("Günlük çalışma", str(exc))
-        finally:
-            raise
+        except Exception as log_exc:
+            print(f"Hata Google Sheets'e kaydedilemedi: {log_exc}", file=sys.stderr)
+        raise
 
 
 def main() -> None:
